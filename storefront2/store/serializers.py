@@ -6,7 +6,7 @@ from rest_framework import serializers
 from decimal import Decimal
 
 from rest_framework.fields import IntegerField
-from .models import Cart, CartItem, Customer, Product, Collection, Review
+from .models import Cart, CartItem, Customer, Order, OrderItem, Product, Collection, Review
 
 class CollectionSerializer(serializers.ModelSerializer):
     class Meta:
@@ -30,7 +30,7 @@ class ReviewSerializer(serializers.ModelSerializer):
         fields = ['id', 'date', 'name', 'description']
     
     def create(self, validated_data):
-        product_id = self.context[product_id]
+        product_id = self.context['product_id']
         return Review.objects.create(product_id=product_id, **validated_data)
 
 class SimpleProductSerializer(serializers.ModelSerializer):
@@ -96,3 +96,23 @@ class CustomerSerializer(serializers.ModelSerializer):
     class Meta:
         model = Customer
         fields = ['id', 'user_id', 'phone', 'birth_date', 'membership']
+
+class OrderItemSerializer(serializers.ModelSerializer):
+    product = SimpleProductSerializer()
+    class Meta:
+        model = OrderItem
+        fields = ['id', 'product', 'quantity', 'unit_price']
+
+class OrderSerializer(serializers.ModelSerializer):
+    items = OrderItemSerializer(many=True)
+    class Meta:
+        model = Order
+        fields = ['id', 'customer', 'placed_at', 'payment_status', 'items']
+
+class CreateOrderSerializer(serializers.Serializer):
+    cart_id = serializers.UUIDField()
+
+    def save(self, *args, **kwargs):
+        (customer, _) = Customer.objects.get_or_create(user_id=self.context['user_id'])
+        Order.objects.create(customer=customer)
+        
